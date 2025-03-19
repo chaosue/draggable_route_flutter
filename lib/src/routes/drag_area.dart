@@ -2,6 +2,7 @@ import 'package:draggable_route/draggable_route.dart';
 import 'package:draggable_route/src/gestures/monodrag.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+
 // ignore: depend_on_referenced_packages
 import 'package:provider/provider.dart';
 import 'package:vector_math/vector_math_64.dart';
@@ -106,9 +107,50 @@ class _DragAreaState extends State<DragArea> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = widget.settings ?? //
-        DraggableRouteTheme.of(context).settings;
+    final settings =
+        widget.settings ?? DraggableRouteTheme.of(context).settings;
 
+    final dynamic gestureRecognizer = settings.dragAxis == DragAxis.vertical
+        ? _VerticalGestureRecognizer(
+            () => verticalEdge, settings.edgeSlop, settings.slop)
+        : settings.dragAxis == DragAxis.horizontal
+            ? _HorizontalRecognizer(
+                () => horizontalEdge, settings.edgeSlop, settings.slop)
+            : _PanGestureRecognizer(() => horizontalEdge, () => verticalEdge,
+                settings.edgeSlop, settings.slop);
+    gestureRecognizerFactoryInitializer(DragGestureRecognizer instance) =>
+        instance
+          ..onStart = onPanStart
+          ..onCancel = onPanCancel
+          ..onUpdate = onPanUpdate
+          ..onEnd = onPanEnd;
+    Map<Type, GestureRecognizerFactory<DragGestureRecognizer>> gestures;
+    switch (settings.dragAxis) {
+      case DragAxis.vertical:
+        gestures = {
+          _VerticalGestureRecognizer:
+              GestureRecognizerFactoryWithHandlers<_VerticalGestureRecognizer>(
+            () => gestureRecognizer,
+            gestureRecognizerFactoryInitializer,
+          ),
+        };
+      case DragAxis.horizontal:
+        gestures = {
+          _HorizontalRecognizer:
+              GestureRecognizerFactoryWithHandlers<_HorizontalRecognizer>(
+            () => gestureRecognizer,
+            gestureRecognizerFactoryInitializer,
+          ),
+        };
+      default:
+        gestures = {
+          _PanGestureRecognizer:
+              GestureRecognizerFactoryWithHandlers<_PanGestureRecognizer>(
+            () => gestureRecognizer,
+            gestureRecognizerFactoryInitializer,
+          ),
+        };
+    }
     return Listener(
       onPointerDown: (event) {
         for (final context in {...horizontal}) {
@@ -138,22 +180,7 @@ class _DragAreaState extends State<DragArea> {
         }
       },
       child: RawGestureDetector(
-        gestures: {
-          _PanGestureRecognizer:
-              GestureRecognizerFactoryWithHandlers<_PanGestureRecognizer>(
-            () => _PanGestureRecognizer(
-              () => horizontalEdge,
-              () => verticalEdge,
-              settings.edgeSlop,
-              settings.slop,
-            ),
-            (instance) => instance //
-              ..onStart = onPanStart
-              ..onCancel = onPanCancel
-              ..onUpdate = onPanUpdate
-              ..onEnd = onPanEnd,
-          ),
-        },
+        gestures: gestures,
         child: ScrollConfiguration(
           behavior: const _DraggableScrollBehavior(),
           child: NotificationListener<Notification>(
@@ -275,5 +302,76 @@ class _PanGestureRecognizer extends PanGestureRecognizer {
     final slop = delta.dx.abs() > delta.dy.abs() ? xSlop : ySlop;
 
     return globalDistanceMoved.abs() > slop;
+  }
+}
+
+class _HorizontalRecognizer extends HorizontalDragGestureRecognizer {
+  final ValueGetter<_Edge?> horizontalEdge;
+  final double edgeSlop;
+  final double defaultSlop;
+
+  _HorizontalRecognizer(
+    this.horizontalEdge,
+    this.edgeSlop,
+    this.defaultSlop,
+  );
+
+  @override
+  bool hasSufficientGlobalDistanceToAccept(
+    PointerDeviceKind pointerDeviceKind,
+    double? deviceTouchSlop,
+  ) {
+    if (horizontalEdge() == _Edge.middle) {
+      return super.hasSufficientGlobalDistanceToAccept(
+        pointerDeviceKind,
+        deviceTouchSlop,
+      );
+    }
+
+    var delta = (finalPosition.global - initialPosition.global);
+
+    var xSlop = switch (horizontalEdge()) {
+      _Edge.start when delta.dx > 0 => edgeSlop,
+      _Edge.end when delta.dx < 0 => edgeSlop,
+      null => edgeSlop,
+      _ => defaultSlop,
+    };
+    return globalDistanceMoved.abs() > xSlop;
+  }
+}
+
+class _VerticalGestureRecognizer extends VerticalDragGestureRecognizer {
+  final ValueGetter<_Edge?> verticalEdge;
+
+  final double edgeSlop;
+  final double defaultSlop;
+
+  _VerticalGestureRecognizer(
+    this.verticalEdge,
+    this.edgeSlop,
+    this.defaultSlop,
+  );
+
+  @override
+  bool hasSufficientGlobalDistanceToAccept(
+    PointerDeviceKind pointerDeviceKind,
+    double? deviceTouchSlop,
+  ) {
+    if (verticalEdge() == _Edge.middle) {
+      return super.hasSufficientGlobalDistanceToAccept(
+        pointerDeviceKind,
+        deviceTouchSlop,
+      );
+    }
+
+    var delta = (finalPosition.global - initialPosition.global);
+
+    var ySlop = switch (verticalEdge()) {
+      _Edge.start when delta.dy > 0 => edgeSlop,
+      _Edge.end when delta.dy < 0 => edgeSlop,
+      null => edgeSlop,
+      _ => defaultSlop,
+    };
+    return globalDistanceMoved.abs() > ySlop;
   }
 }

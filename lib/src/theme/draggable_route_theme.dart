@@ -7,6 +7,8 @@ typedef ImageFilterTransitionBuilder = ImageFilter Function(
   Animation<double> animation,
 );
 
+enum DragAxis { vertical, horizontal, any }
+
 /// {@template draggable_route.DraggableRouteTheme}
 /// Theme to control styling of [DraggableRoute]
 /// {@endtemplate}
@@ -119,24 +121,28 @@ class DraggableRouteSettings {
   /// refer [DraggableRouteTheme.dismissVelocity], the value in the runtime setting has the priority.
   final double? dismissVelocity;
 
-  const DraggableRouteSettings({
-    required this.slop,
-    required this.edgeSlop,
-    this.dismissDistance,
-    this.dismissVelocity,
-  });
+  /// in which axis the open widget can be dragged.
+  final DragAxis dragAxis;
 
-  DraggableRouteSettings copyWith({
-    double? slop,
-    double? edgeSlop,
-    double? dismissDistance,
-    double? dismissVelocity,
-  }) {
+  const DraggableRouteSettings(
+      {required this.slop,
+      required this.edgeSlop,
+      this.dismissDistance,
+      this.dismissVelocity,
+      this.dragAxis = DragAxis.any});
+
+  DraggableRouteSettings copyWith(
+      {double? slop,
+      double? edgeSlop,
+      double? dismissDistance,
+      double? dismissVelocity,
+      DragAxis? dragAxis}) {
     return DraggableRouteSettings(
       slop: slop ?? this.slop,
       edgeSlop: edgeSlop ?? this.edgeSlop,
       dismissVelocity: dismissVelocity ?? this.dismissVelocity,
       dismissDistance: dismissDistance ?? this.dismissDistance,
+      dragAxis: dragAxis ?? this.dragAxis,
     );
   }
 }
