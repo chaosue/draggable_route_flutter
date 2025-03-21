@@ -21,4 +21,4 @@ final kDefaultTheme = DraggableRouteTheme(
 );
 
 // TODO(@melvspace): 10/02/24 research why this magic numbers works
-const kDefaultSettings = DraggableRouteSettings(edgeSlop: 4, slop: 300);
+const kDefaultSettings = DraggableRouteSettings(edgeSlop: 10, slop: 300);

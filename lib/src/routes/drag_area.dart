@@ -1,5 +1,5 @@
 import 'package:draggable_route/draggable_route.dart';
-import 'package:draggable_route/src/gestures/monodrag.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
@@ -34,7 +34,6 @@ class _DragAreaState extends State<DragArea> {
 
   _Edge? horizontalEdge;
   _Edge? verticalEdge;
-
   late DraggableRoute route;
 
   @override
@@ -64,43 +63,42 @@ class _DragAreaState extends State<DragArea> {
         result,
         position: Offset(localPosition.x, localPosition.y),
       );
+      if (!hitted) {
+        return;
+      }
+      _Edge edge;
+      final metrics = state.position;
 
-      if (hitted) {
-        _Edge edge;
-        final metrics = state.position;
+      var offset = (state.position.pixels - state.position.minScrollExtent) /
+          (state.position.maxScrollExtent - state.position.minScrollExtent);
 
-        var offset = (state.position.pixels - state.position.minScrollExtent) /
-            (state.position.maxScrollExtent - state.position.minScrollExtent);
-
-        DraggableRouteScrollResolverState? findCustomResolver(
-          BuildContext context,
-        ) {
-          final resolver = context.read<DraggableRouteScrollResolverState?>();
-          if (resolver == null) return null;
-          if (resolver.axis != state.position.axis) {
-            return findCustomResolver(resolver.context);
-          }
-
-          return resolver;
+      DraggableRouteScrollResolverState? findCustomResolver(
+        BuildContext context,
+      ) {
+        final resolver = context.read<DraggableRouteScrollResolverState?>();
+        if (resolver == null) return null;
+        if (resolver.axis != state.position.axis) {
+          return findCustomResolver(resolver.context);
         }
 
-        offset = findCustomResolver(state.context)?.offset() ?? offset;
+        return resolver;
+      }
 
-        if (offset == 0) {
-          edge = _Edge.start;
-        } else if (offset == 1) {
-          edge = _Edge.end;
-        } else {
-          edge = _Edge.middle;
-        }
+      offset = findCustomResolver(state.context)?.offset() ?? offset;
 
-        switch (metrics.axis) {
-          case Axis.vertical:
-            verticalEdge = edge;
+      if (offset == 0) {
+        edge = _Edge.start;
+      } else if (offset == 1) {
+        edge = _Edge.end;
+      } else {
+        edge = _Edge.middle;
+      }
+      switch (metrics.axis) {
+        case Axis.vertical:
+          verticalEdge = edge;
 
-          case Axis.horizontal:
-            horizontalEdge = edge;
-        }
+        case Axis.horizontal:
+          horizontalEdge = edge;
       }
     }
   }
@@ -263,6 +261,7 @@ class _PanGestureRecognizer extends PanGestureRecognizer {
 
   final double edgeSlop;
   final double defaultSlop;
+  OffsetPair? _initialPosition;
 
   _PanGestureRecognizer(
     this.horizontalEdge,
@@ -272,36 +271,31 @@ class _PanGestureRecognizer extends PanGestureRecognizer {
   );
 
   @override
+  GestureDragDownCallback? get onDown => (DragDownDetails details) {
+        _initialPosition = lastPosition;
+      };
+
+  @override
   bool hasSufficientGlobalDistanceToAccept(
     PointerDeviceKind pointerDeviceKind,
     double? deviceTouchSlop,
   ) {
-    if (horizontalEdge() == _Edge.middle && verticalEdge() == _Edge.middle) {
-      return super.hasSufficientGlobalDistanceToAccept(
-        pointerDeviceKind,
-        deviceTouchSlop,
-      );
+    if ((horizontalEdge() == _Edge.middle || horizontalEdge() == null) &&
+        (verticalEdge() == _Edge.middle || verticalEdge() == null)) {
+      if (_initialPosition != null) {
+        final delta = lastPosition.global - _initialPosition!.global;
+        if (horizontalEdge() == null) {
+          return delta.dx.abs() > edgeSlop;
+        } else if (verticalEdge() == null) {
+          return delta.dy.abs() > edgeSlop;
+        }
+      }
+      // hit on the scrolled scrollable, give up dragging the widget.
+      return false;
     }
-
-    var delta = (finalPosition.global - initialPosition.global);
-
-    var ySlop = switch (verticalEdge()) {
-      _Edge.start when delta.dy > 0 => edgeSlop,
-      _Edge.end when delta.dy < 0 => edgeSlop,
-      null => edgeSlop,
-      _ => defaultSlop,
-    };
-
-    var xSlop = switch (horizontalEdge()) {
-      _Edge.start when delta.dx > 0 => edgeSlop,
-      _Edge.end when delta.dx < 0 => edgeSlop,
-      null => edgeSlop,
-      _ => defaultSlop,
-    };
-
-    final slop = delta.dx.abs() > delta.dy.abs() ? xSlop : ySlop;
-
-    return globalDistanceMoved.abs() > slop;
+    // hit on the scrollable that reached the end or beginning of the scroll, or there're no scrollables at all,
+    // so try to check if the drag should be accepted by the movement.
+    return globalDistanceMoved.abs() > edgeSlop;
   }
 }
 
@@ -322,21 +316,10 @@ class _HorizontalRecognizer extends HorizontalDragGestureRecognizer {
     double? deviceTouchSlop,
   ) {
     if (horizontalEdge() == _Edge.middle) {
-      return super.hasSufficientGlobalDistanceToAccept(
-        pointerDeviceKind,
-        deviceTouchSlop,
-      );
+      return false;
     }
 
-    var delta = (finalPosition.global - initialPosition.global);
-
-    var xSlop = switch (horizontalEdge()) {
-      _Edge.start when delta.dx > 0 => edgeSlop,
-      _Edge.end when delta.dx < 0 => edgeSlop,
-      null => edgeSlop,
-      _ => defaultSlop,
-    };
-    return globalDistanceMoved.abs() > xSlop;
+    return globalDistanceMoved.abs() > edgeSlop;
   }
 }
 
@@ -358,20 +341,9 @@ class _VerticalGestureRecognizer extends VerticalDragGestureRecognizer {
     double? deviceTouchSlop,
   ) {
     if (verticalEdge() == _Edge.middle) {
-      return super.hasSufficientGlobalDistanceToAccept(
-        pointerDeviceKind,
-        deviceTouchSlop,
-      );
+      return false;
     }
 
-    var delta = (finalPosition.global - initialPosition.global);
-
-    var ySlop = switch (verticalEdge()) {
-      _Edge.start when delta.dy > 0 => edgeSlop,
-      _Edge.end when delta.dy < 0 => edgeSlop,
-      null => edgeSlop,
-      _ => defaultSlop,
-    };
-    return globalDistanceMoved.abs() > ySlop;
+    return globalDistanceMoved.abs() > edgeSlop;
   }
 }
