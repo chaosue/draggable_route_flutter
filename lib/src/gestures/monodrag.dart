@@ -5,6 +5,7 @@
 library;
 
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -354,6 +355,31 @@ abstract class DragGestureRecognizer extends OneSequenceGestureRecognizer {
 
   @override
   bool isPointerAllowed(PointerEvent event) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      final ui.FlutterView view = () {
+        final views = WidgetsBinding.instance.platformDispatcher.views;
+        if (views.isEmpty) {
+          return WidgetsBinding.instance.platformDispatcher.implicitView!;
+        }
+        final int? viewId = event.viewId;
+        if (viewId == null) return views.first;
+        return views.firstWhere(
+          (v) => v.viewId == viewId,
+          orElse: () => views.first,
+        );
+      }();
+
+      final double dpr = view.devicePixelRatio;
+      final double left = view.systemGestureInsets.left / dpr;
+      final double right = view.systemGestureInsets.right / dpr;
+      final double width = view.physicalSize.width / dpr;
+
+      final double dx = event.position.dx;
+      if (dx <= left || dx >= width - right) {
+        return false;
+      }
+    }
+
     if (_initialButtons == null) {
       if (onDown == null &&
           onStart == null &&
