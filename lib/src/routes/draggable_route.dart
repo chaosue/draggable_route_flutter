@@ -22,12 +22,12 @@ class DraggableRoute<T> extends PageRoute<T> {
   /// Builds the primary contents of the route.
   final WidgetBuilder builder;
 
-// #region Style Properties
+  // #region Style Properties
 
   /// Border radius of card when dragging around
   final BorderRadius? borderRadius;
 
-// #endregion
+  // #endregion
 
   /// Settings to control route behavior
   final DraggableRouteSettings? routeSettings;
@@ -152,8 +152,19 @@ class DraggableRoute<T> extends PageRoute<T> {
 
   @override
   void dispose() {
+    if (navigator?.userGestureInProgress ?? false) {
+      navigator!.didStopUserGesture();
+    }
     _cancelAnimationController.dispose();
     super.dispose();
+  }
+
+  @override
+  bool didPop(T? result) {
+    if (navigator?.userGestureInProgress ?? false) {
+      navigator!.didStopUserGesture();
+    }
+    return super.didPop(result);
   }
 
   @override
@@ -207,7 +218,17 @@ class DraggableRoute<T> extends PageRoute<T> {
             startRO.size.height,
           );
         }
-      } on FlutterError {/* ignore flutter errors due to inconsistency */}
+      } on FlutterError {
+        /* ignore flutter errors due to inconsistency */
+      } on AssertionError {
+        /* ignore flutter errors due to inconsistency */
+      } on StateError catch (e) {
+        if (e.message.contains("RenderBox was not laid out")) {
+          /* ignore flutter errors due to inconsistency */
+        } else {
+          rethrow;
+        }
+      }
     }
 
     if (source == null || !source.mounted || startTransitionRect == null) {

@@ -1,6 +1,27 @@
 # Changelog
 
 
+## [0.7.3](https://github.com/melvspace/draggable_route_flutter/compare/v0.7.2...v0.7.3) (2025-12-22)
+
+
+### Bug Fixes
+
+* **android:** fix android system pop gesture bug ([#20](https://github.com/melvspace/draggable_route_flutter/issues/20)) ([227c024](https://github.com/melvspace/draggable_route_flutter/commit/227c0243ae065bbdcbcd1bbdc85c8f9391d3e711))
+
+## [0.7.2](https://github.com/melvspace/draggable_route_flutter/compare/v0.7.1...v0.7.2) (2025-09-25)
+
+
+### Bug Fixes
+
+* ignore asserting errors as well due to inconsistency in widget lifecycle ([b3ebc0b](https://github.com/melvspace/draggable_route_flutter/commit/b3ebc0bd411acf36a31353b469a0f33c0c21a9a2))
+
+## [0.7.1](https://github.com/melvspace/draggable_route_flutter/compare/v0.7.0...v0.7.1) (2025-09-25)
+
+
+### Bug Fixes
+
+* fix state error in rare scenarios ([cf7bbdc](https://github.com/melvspace/draggable_route_flutter/commit/cf7bbdcb984b68142762c54d4efdf66670b953b7))
+
 ## [0.7.0](https://github.com/rIIh/draggable_route_flutter/compare/v0.6.4...v0.7.0) (2025-02-13)
 
 
